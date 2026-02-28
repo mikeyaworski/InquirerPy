@@ -76,6 +76,7 @@ class BaseListPrompt(BaseComplexPrompt):
         self._multiselect = multiselect
         self._is_multiselect = Condition(lambda: self._multiselect)
         self._cycle = cycle
+        self._selected_order: List[int] = []
 
         if not keybindings:
             keybindings = {}
@@ -182,9 +183,56 @@ class BaseListPrompt(BaseComplexPrompt):
         """List[Any]: Get all user selected choices."""
 
         def filter_choice(choice):
-            return not isinstance(choice, Separator) and choice["enabled"]
+            return not isinstance(choice["value"], Separator) and choice["enabled"]
+        choices = self.content_control.choices
+        ordered_choices = [
+            choices[index] for index in self._selected_order if filter_choice(choices[index])
+        ]
+        return ordered_choices
 
-        return list(filter(filter_choice, self.content_control.choices))
+    def _get_choice(self, index: int) -> Optional[Any]:
+        """Get a choice by index."""
+        choices = self.content_control.choices
+        if index < 0 or index >= len(choices):
+            return None
+        return choices[index]
+
+    def _init_selected_order(self) -> None:
+        """Initialize ordered selection from pre-enabled choices."""
+        self._selected_order = [
+            index for index, choice in enumerate(self.content_control.choices)
+            if not isinstance(choice["value"], Separator) and choice["enabled"]
+        ]
+
+    def _set_choice_enabled(self, index: int, enabled: bool) -> None:
+        """Set choice enabled status and keep ordered selection in sync."""
+        choice = self._get_choice(index)
+        if not choice or isinstance(choice["value"], Separator):
+            return
+        choice["enabled"] = enabled
+        if enabled:
+            if index not in self._selected_order:
+                self._selected_order.append(index)
+        elif index in self._selected_order:
+            self._selected_order.remove(index)
+
+    def _toggle_choice_index(self, index: int) -> None:
+        """Toggle a choice by index, updating ordered selection."""
+        choice = self._get_choice(index)
+        if choice: self._set_choice_enabled(index, not choice["enabled"])
+
+    def _toggle_choices(self, indices: List[int], value: Optional[bool] = None) -> None:
+        """Toggle or set multiple choices by index."""
+        if not self._multiselect:
+            return
+        for index in indices:
+            choice = self._get_choice(index)
+            if not choice or isinstance(choice["value"], Separator):
+                continue
+            if value is None:
+                self._set_choice_enabled(index, not choice["enabled"])
+            else:
+                self._set_choice_enabled(index, value)
 
     def _handle_down(self, _) -> bool:
         """Handle event when user attempts to move down.
@@ -229,7 +277,7 @@ class BaseListPrompt(BaseComplexPrompt):
 
     @abstractmethod
     def _handle_toggle_choice(self, event) -> None:
-        """Handle event when user attempting to toggle the state of the chocie."""
+        """Handle event when user attempting to toggle the state of the choice."""
         pass
 
     @abstractmethod

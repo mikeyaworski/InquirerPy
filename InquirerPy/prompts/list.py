@@ -224,6 +224,7 @@ class ListPrompt(BaseListPrompt):
             mandatory_message=mandatory_message,
             session_result=session_result,
         )
+        self._init_selected_order()
         self._show_cursor = show_cursor
         self._dimmension_height, self._dimmension_max_height = calculate_height(
             height, max_height, height_offset=self.height_offset
@@ -295,9 +296,7 @@ class ListPrompt(BaseListPrompt):
         """Toggle the `enabled` status of the choice."""
         if not self._multiselect:
             return
-        self.content_control.selection["enabled"] = not self.content_control.selection[
-            "enabled"
-        ]
+        self._toggle_choice_index(self.content_control.selected_choice_index)
 
     def _handle_toggle_all(self, _, value: Optional[bool] = None) -> None:
         """Toggle all choice `enabled` status.
@@ -307,10 +306,8 @@ class ListPrompt(BaseListPrompt):
         """
         if not self._multiselect:
             return
-        for choice in self.content_control.choices:
-            if isinstance(choice["value"], Separator):
-                continue
-            choice["enabled"] = value if value else not choice["enabled"]
+        indices = list(range(len(self.content_control.choices)))
+        self._toggle_choices(indices, value)
 
     def _handle_up(self, event) -> None:
         """Handle the event when user attempt to move up."""
