@@ -657,9 +657,12 @@ class FuzzyPrompt(BaseListPrompt):
         except ValidationError as e:
             self._set_error(str(e))
         except IndexError:
-            self.status["answered"] = True
-            self.status["result"] = None if not self._multiselect else []
-            event.app.exit(result=None if not self._multiselect else [])
+            if self._mandatory:
+                self._set_error(self._mandatory_message)
+            else:
+                self.status["answered"] = True
+                self.status["result"] = None if not self._multiselect else []
+                event.app.exit(result=None if not self._multiselect else [])
 
     @property
     def content_control(self) -> InquirerPyFuzzyControl:
