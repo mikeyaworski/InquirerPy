@@ -326,6 +326,8 @@ class NumberPrompt(BaseComplexPrompt):
             editing_mode=self._editing_mode,
         )
 
+        self._initialize_default_buffers()
+
     def _fix_sn(self, value: str) -> Tuple[str, str]:
         """Fix sciencetific notation format.
 
@@ -340,8 +342,8 @@ class NumberPrompt(BaseComplexPrompt):
         integral_buffer_text = f"{(int(right) - 1) * '0'}{left.replace('.', '')}"
         return whole_buffer_text, integral_buffer_text
 
-    def _on_rendered(self, _) -> None:
-        """Additional processing to adjust buffer content after render."""
+    def _initialize_default_buffers(self) -> None:
+        """Populate number buffers with default value and cursor state."""
         if self._no_default:
             return
         if not self._float:
